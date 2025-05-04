@@ -79,8 +79,10 @@ task readySource {
     if (!srcFrom.exists()) {
         throw new GradleException("java directory does not exist: ${srcFrom}")
     }
-    exec {
-        commandLine 'cmd', '/c', "mklink", "/J", srcInto.getAbsolutePath(), srcFrom.getAbsolutePath()
+    if (!srcInto.exists()) {
+        exec {
+            commandLine 'cmd', '/c', "mklink", "/J", srcInto.getAbsolutePath(), srcFrom.getAbsolutePath()
+        }
     }
 
     // 'libs/android' ==> 'libs'
@@ -89,8 +91,10 @@ task readySource {
     if (!libFrom.exists()) {
         throw new GradleException("libs directory does not exist: ${libFrom}")
     }
-    exec {
-        commandLine 'cmd', '/c', "mklink", "/J", libInto.getAbsolutePath(), libFrom.getAbsolutePath()
+    if (!libInto.exists()) {
+        exec {
+            commandLine 'cmd', '/c', "mklink", "/J", libInto.getAbsolutePath(), libFrom.getAbsolutePath()
+        }
     }
 }
 preBuild.dependsOn readySource
