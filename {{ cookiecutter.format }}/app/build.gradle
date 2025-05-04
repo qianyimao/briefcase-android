@@ -96,7 +96,7 @@ task readySource {
 preBuild.dependsOn readySource
 
 def readyPatch(conf) {
-    def patchFrom = "$projectDir/patches"
+    def patchFrom = "$projectDir/patched"
     def patchInto = "$projectDir/build/python/jniLibs"
     def patchConf = new File(patchInto, conf)
 
