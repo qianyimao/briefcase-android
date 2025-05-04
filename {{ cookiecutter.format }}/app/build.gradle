@@ -72,5 +72,58 @@ dependencies {
 {% endif -%}
 }
 
+task readySource {
+    // 'src/java' ==> 'org.ccustom'
+    def srcFrom = new File("${projectDir}/../../../../../src/java")
+    def srcInto = new File("${projectDir}/src/main/java/org/custom")
+    if (!srcFrom.exists()) {
+        throw new GradleException("java directory does not exist: ${srcFrom}")
+    }
+    exec {
+        commandLine 'cmd', '/c', "mklink", "/J", srcInto.getAbsolutePath(), srcFrom.getAbsolutePath()
+    }
+
+    // 'libs/android' ==> 'libs'
+    def libFrom = new File("${projectDir}/../../../../../libs/android")
+    def libInto = new File("${projectDir}/libs")
+    if (!libFrom.exists()) {
+        throw new GradleException("libs directory does not exist: ${libFrom}")
+    }
+    exec {
+        commandLine 'cmd', '/c', "mklink", "/J", libInto.getAbsolutePath(), libFrom.getAbsolutePath()
+    }
+}
+preBuild.dependsOn readySource
+
+def readyPatch(conf) {
+    def patchFrom = "$projectDir/patches"
+    def patchInto = "$projectDir/build/python/jniLibs"
+    def patchConf = new File(patchInto, conf)
+
+    if (patchConf.exists()) {
+        ['arm64-v8a', 'x86_64'].each { arch ->
+            copy {
+                from "$patchFrom/$arch/libpython3.8.so"
+                into "$patchConf/$arch"
+            }
+            println "patched file '$patchConf/$arch/libpython3.8.so'"
+        }
+    } else {
+        throw new GradleException("copy patched files failed")
+    }
+}
+['Debug', 'Release'].each { conf ->
+    task "readyPatch${conf}" {
+        doLast {
+            readyPatch(conf.toLowerCase())
+        }
+    }
+}
+afterEvaluate {
+    ['Debug', 'Release'].each { conf ->
+        tasks.findByName("generate${conf}PythonJniLibs")?.finalizedBy "readyPatch${conf}"
+    }
+}
+
 // ========== START USER PROVIDED CONTENT ==========
 {{ cookiecutter.build_gradle_extra_content }}
