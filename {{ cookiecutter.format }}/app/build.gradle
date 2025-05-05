@@ -101,24 +101,33 @@ preBuild.dependsOn readySource
 
 def readyPatch(conf) {
     def patchFrom = "$projectDir/patched"
-    def patchInto = "$projectDir/build/python/jniLibs"
-    def patchConf = new File(patchInto, conf)
+    def patchInto = "$projectDir/build/python/jniLibs/$conf"
 
-    if (patchConf.exists()) {
-        ['arm64-v8a', 'x86_64'].each { arch ->
-            delete "$patchConf/$arch/libpython3.8.so"
-            copy {
-                from "$patchFrom/$arch/libpython3.8.so"
-                into "$patchConf/$arch"
-            }
-            println "patched file '$patchConf/$arch/libpython3.8.so'"
+    ['arm64-v8a', 'x86_64'].each { arch ->
+        def fileFrom = new File(patchFrom, "/$arch/libpython3.8.so")
+        def fileInto = new File(patchInto, "/$arch/libpython3.8.so")
+
+        if (!fileFrom.exists()) {
+            throw GradleException("'$fileFrom' not found")
         }
-    } else {
-        throw new GradleException("copy patched files failed")
+        if (!fileInto.exists()) {
+            throw GradleException("'$fileInto' not found")
+        }
+        delete "$fileInto"
+
+        copy {
+            from "$fileFrom"
+            into fileInto.parentFile
+        }
+
+        if (!fileInto.exists()) {
+            throw GradleException("$fileInto not found")
+        }
+        println "patched file '$fileInto'"
     }
 }
 ['Debug', 'Release'].each { conf ->
-    task "readyPatch${conf}" {
+    tasks.register("readyPatch${conf}") {
         doLast {
             readyPatch(conf.toLowerCase())
         }
@@ -126,7 +135,7 @@ def readyPatch(conf) {
 }
 afterEvaluate {
     ['Debug', 'Release'].each { conf ->
-        tasks.findByName("generate${conf}PythonJniLibs")?.finalizedBy "readyPatch${conf}"
+        tasks.maybeCreate("generate${conf}PythonJniLibs").finalizedBy "readyPatch${conf}"
     }
 }
 
